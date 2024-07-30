@@ -1,15 +1,25 @@
-all: main
+CC       := gcc
+CLANG    := clang
+FLAGS    += -pipe -Wall -Wextra -Wno-unused-parameter -ggdb3
+DEFINE   += -DLINUX
+INCLUDE  := -I $(MUSL)/usr/include/
+CFLAGS   += $(FLAGS) $(INCLUDE) $(DEFINE)
+LDFLAGS  += -L/usr/local/lib
+LDLIBS   := -lc -lbpf -lz -lelf
+OUT      := bin
 
-main.bpf.o: main.bpf.c
-	clang -O3 -g -target bpf -c main.bpf.c -o main.bpf.o
+TARGETS := main-perf-event main-tc main-ringbuf
 
-main.skel.h: main.bpf.o
-	bpftool gen skeleton main.bpf.o > main.skel.h
+all: dir_make $(TARGETS)
 
-main: main.skel.h main.c
-	gcc -O3 -o main main.c -lbpf
+dir_make:
+	test -d $(OUT) || mkdir $(OUT)
+
+%: %.c dir_make
+	$(CLANG) -O3 -g -target bpf -c $*.bpf.c -o $(OUT)/$*.bpf.o
+	$(CC) $(CFLAGS) $(LDFLAGS) $*.c $(LDLIBS) -o $(OUT)/$@
 
 clean:
-	rm -f main.bpf.o main.skel.h main
+	rm -rf $(OUT)
 
-.PHONY: all clean
+.PHONY: all clean dir_make
