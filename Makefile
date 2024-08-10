@@ -8,7 +8,7 @@ LDFLAGS  += -L/usr/local/lib
 LDLIBS   := -lc -lbpf -lz -lelf
 OUT      := bin
 
-TARGETS := main-perf-event main-tc main-ringbuf
+TARGETS := main-perf-event main-tc main-ringbuf xdp-tcp
 
 all: dir_make $(TARGETS)
 
