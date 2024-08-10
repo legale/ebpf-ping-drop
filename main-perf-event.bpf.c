@@ -1,10 +1,10 @@
 #include <stdint.h>
+#include <arpa/inet.h>
+#include <linux/bpf.h>
+#include <bpf/bpf_helpers.h>
 #include <linux/if_ether.h>
 #include <linux/ip.h>
 #include <linux/icmp.h>
-#include <linux/bpf.h>
-#include <bpf/bpf_helpers.h>
-#include <arpa/inet.h>
 
 #include "main.h"
 

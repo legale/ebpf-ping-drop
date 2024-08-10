@@ -1,10 +1,11 @@
+#include <arpa/inet.h>
+
 #include <stdint.h>
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
 #include <linux/ip.h>
 #include <linux/icmp.h>
 #include <bpf/bpf_helpers.h>
-#include <arpa/inet.h>
 
 #include "main.h"
 
@@ -39,9 +40,6 @@ int detect_ping(struct xdp_md *ctx) {
     }
 
     
-    if (eth->h_proto != htons(ETH_P_IP)) {
-        return XDP_PASS;
-    }
 
 
     if (ip->protocol == 1) {
