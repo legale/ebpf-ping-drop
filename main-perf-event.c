@@ -1,7 +1,10 @@
 #include <arpa/inet.h>
+
 #include <bpf/bpf.h>
+
 #include <bpf/libbpf.h>
 #include <linux/bpf.h>
+#include <linux/limits.h>
 #include <net/if.h>
 #include <signal.h>
 #include <stdio.h>
@@ -32,8 +35,8 @@ int main(int argc, char *argv[]) {
   struct bpf_link *link;
   struct bpf_map *map_hash, *map_events;
   struct perf_buffer *pb;
-  struct perf_buffer_opts pb_opts = { .sz = 32};
-  
+  struct perf_buffer_opts pb_opts = {.sz = 32};
+
   int err;
   unsigned int ifindex;
   uint32_t ip_host, ip_server;
@@ -48,9 +51,13 @@ int main(int argc, char *argv[]) {
   ifindex = if_nametoindex(argv[1]);
   signal(SIGINT, handle_sigint);
 
-  obj = bpf_object__open("main-perf-event.bpf.o");
-  if (libbpf_get_error(obj)) {
-    fprintf(stderr, "failed to open BPF object\n");
+  char obj_file[PATH_MAX];
+  snprintf(obj_file, sizeof(obj_file), "%s.bpf.o", argv[0]);
+  printf("path: %s\n", argv[0]);
+
+  obj = bpf_object__open(obj_file);
+  if (!obj) {
+    fprintf(stderr, "Failed to open BPF object file: %s\n", obj_file);
     return 1;
   }
 
@@ -77,12 +84,13 @@ int main(int argc, char *argv[]) {
 
   map_events = bpf_object__find_map_by_name(obj, "events");
   if (!map_events) {
-      fprintf(stderr, "failed to get events map\n");
-      bpf_object__close(obj);
-      return 1;
+    fprintf(stderr, "failed to get events map\n");
+    bpf_object__close(obj);
+    return 1;
   }
 
-  pb = perf_buffer__new(bpf_map__fd(map_events), 32, handle_event, NULL, NULL, &pb_opts);
+  pb = perf_buffer__new(bpf_map__fd(map_events), 32, handle_event, NULL, NULL,
+                        &pb_opts);
   if (!pb) {
     fprintf(stderr, "failed perf_buffer__new\n");
     bpf_object__close(obj);
@@ -101,7 +109,8 @@ int main(int argc, char *argv[]) {
   inet_pton(AF_INET, ip_host_str, &ip_host);
   inet_pton(AF_INET, ip_server_str, &ip_server);
 
-  err = bpf_map_update_elem(bpf_map__fd(map_hash), &ip_server, &ip_server, BPF_ANY);
+  err = bpf_map_update_elem(bpf_map__fd(map_hash), &ip_server, &ip_server,
+                            BPF_ANY);
   if (err) {
     fprintf(stderr, "failed bpf_map_update_elem in ping_hash\n");
     bpf_object__close(obj);

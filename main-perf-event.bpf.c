@@ -1,6 +1,8 @@
-#include <stdint.h>
 #include <arpa/inet.h>
+
 #include <linux/bpf.h>
+
+#include <stdint.h>
 #include <bpf/bpf_helpers.h>
 #include <linux/if_ether.h>
 #include <linux/ip.h>

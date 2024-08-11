@@ -1,7 +1,11 @@
 #include <arpa/inet.h>
+
 #include <bpf/bpf.h>
+
 #include <bpf/libbpf.h>
+#include <libgen.h>
 #include <linux/bpf.h>
+#include <linux/limits.h>
 #include <net/if.h>
 #include <signal.h>
 #include <stdio.h>
@@ -48,9 +52,12 @@ int main(int argc, char *argv[]) {
   ifindex = if_nametoindex(argv[1]);
   signal(SIGINT, handle_sigint);
 
-  obj = bpf_object__open("main-ringbuf.bpf.o");
-  if (libbpf_get_error(obj)) {
-    fprintf(stderr, "failed to open BPF object\n");
+  char obj_file[PATH_MAX];
+  snprintf(obj_file, sizeof(obj_file), "%s.bpf.o", argv[0]);
+
+  obj = bpf_object__open(obj_file);
+  if (!obj) {
+    fprintf(stderr, "Failed to open BPF object file: %s\n", obj_file);
     return 1;
   }
 
@@ -82,7 +89,8 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  ringbuf = ring_buffer__new(bpf_map__fd(ringbuf_map), handle_event, NULL, NULL);
+  ringbuf =
+      ring_buffer__new(bpf_map__fd(ringbuf_map), handle_event, NULL, NULL);
   if (!ringbuf) {
     fprintf(stderr, "failed to create ring buffer\n");
     bpf_object__close(obj);
@@ -101,7 +109,8 @@ int main(int argc, char *argv[]) {
   inet_pton(AF_INET, ip_host_str, &ip_host);
   inet_pton(AF_INET, ip_server_str, &ip_server);
 
-  err = bpf_map_update_elem(bpf_map__fd(map_hash), &ip_server, &ip_server, BPF_ANY);
+  err = bpf_map_update_elem(bpf_map__fd(map_hash), &ip_server, &ip_server,
+                            BPF_ANY);
   if (err) {
     fprintf(stderr, "failed to update element in ping_hash\n");
     bpf_object__close(obj);

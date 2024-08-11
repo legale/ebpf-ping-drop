@@ -1,7 +1,10 @@
 #include <arpa/inet.h>
+
 #include <bpf/bpf.h>
+
 #include <bpf/libbpf.h>
 #include <linux/bpf.h>
+#include <linux/limits.h>
 #include <net/if.h>
 #include <signal.h>
 #include <stdio.h>
@@ -50,9 +53,13 @@ int main(int argc, char *argv[]) {
   ifindex = if_nametoindex(argv[1]);
   signal(SIGINT, handle_sigint);
 
-  obj = bpf_object__open("main-tc.bpf.o");
-  if (libbpf_get_error(obj)) {
-    fprintf(stderr, "failed to open BPF object\n");
+  char obj_file[PATH_MAX];
+  snprintf(obj_file, sizeof(obj_file), "%s.bpf.o", argv[0]);
+  printf("path: %s\n", argv[0]);
+
+  obj = bpf_object__open(obj_file);
+  if (!obj) {
+    fprintf(stderr, "Failed to open BPF object file: %s\n", obj_file);
     return 1;
   }
 
@@ -89,14 +96,9 @@ int main(int argc, char *argv[]) {
 
   // Attach BPF program to the interface using TC
   struct bpf_tc_hook hook = {
-      .sz = 16,
-      .attach_point = BPF_TC_EGRESS,
-      .ifindex = ifindex};
+      .sz = 16, .attach_point = BPF_TC_EGRESS, .ifindex = ifindex};
   struct bpf_tc_opts opts = {
-      .sz = 16,
-      .prog_fd = prog_fd,
-      .prog_id = info.id,
-      .flags = 0};
+      .sz = 16, .prog_fd = prog_fd, .prog_id = info.id, .flags = 0};
   err = bpf_tc_attach(&hook, &opts);
   if (err) {
     fprintf(stderr, "failed to attach BPF program to TC\n");
@@ -111,7 +113,8 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  pb = perf_buffer__new(bpf_map__fd(map_events), 32, handle_event, NULL, NULL, &pb_opts);
+  pb = perf_buffer__new(bpf_map__fd(map_events), 32, handle_event, NULL, NULL,
+                        &pb_opts);
   if (!pb) {
     fprintf(stderr, "failed to create perf buffer\n");
     bpf_object__close(obj);
@@ -130,7 +133,8 @@ int main(int argc, char *argv[]) {
   inet_pton(AF_INET, ip_host_str, &ip_host);
   inet_pton(AF_INET, ip_server_str, &ip_server);
 
-  err = bpf_map_update_elem(bpf_map__fd(map_hash), &ip_server, &ip_server, BPF_ANY);
+  err = bpf_map_update_elem(bpf_map__fd(map_hash), &ip_server, &ip_server,
+                            BPF_ANY);
   if (err) {
     fprintf(stderr, "failed bpf_map_update_elem in ping_hash\n");
     bpf_object__close(obj);
